@@ -26,40 +26,10 @@ namespace EmpInfoUpdateV3
         static void sp_LoadEmpInfo()
         {
             int[] colIdx = new int[1];
-            string[] fldname = new string[1];
-            string[] prmname = new string[1];
-            decimal[] fldamt = new decimal[1];
-
-            int x = -1;
-            x = SetNames(x, "Other_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Other_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Calc_Hourly", ref fldname, ref prmname);
-            x = SetNames(x, "RegWages", ref fldname, ref prmname);
-            x = SetNames(x, "Reg_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Overtime_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Overtime_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Holiday_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Holiday_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "PTO_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "PTO_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "MPP_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Sick_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Sick_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Vacation_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Vacation_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "LA_Predictability_Pay", ref fldname, ref prmname);
-            x = SetNames(x, "LA_Predictability_Pay_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "MPP_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Double_Time_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Double_Time_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Gross_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "True_Working_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "True_Working_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "BPP_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "BPP_Hours", ref fldname, ref prmname);
-            x = SetNames(x, "Split_Shift_Payment_Wages", ref fldname, ref prmname);
-            x = SetNames(x, "Split_Shift_Payment_Hours", ref fldname, ref prmname);
-            Array.Resize(ref fldamt, fldname.Length);
+            string[] fldName = new string[1];
+            string[] prmName = new string[1];
+            int[] fldTyp = new int[1];
+            string[] exempt = { "SS_Number", "Zipcode","ClockSeq" };
 
             SqlConnectionStringBuilder gmcsb = new SqlConnectionStringBuilder();
             gmcsb.IntegratedSecurity = true;
@@ -68,86 +38,85 @@ namespace EmpInfoUpdateV3
             SqlConnection gmccon = new SqlConnection(gmcsb.ConnectionString);
             SqlConnection gmcInsCon = new SqlConnection(gmcsb.ConnectionString);
 
-            SqlCommand command = new SqlCommand("UpdatePayroll", gmcInsCon);
+            SqlCommand command = new SqlCommand("UpdateEmpInfo", gmcInsCon);
             command.CommandType = CommandType.StoredProcedure;
 
-            foreach (string file in Directory.GetFiles("c:\\temp\\PayrollUpdate"))
+            foreach (string file in Directory.GetFiles("c:\\temp\\EmpInfoUpdate"))
             {
-                string Filename = "C:\\temp\\PayrollUpdate\\" + file;
+                string Filename = "C:\\temp\\EmpInfoUpdate\\" + file;
                 using (TextFieldParser parser = new TextFieldParser(@file))
                 {
                     parser.TextFieldType = FieldType.Delimited;
                     parser.SetDelimiters(",");
                     string[] headerRdr = parser.ReadFields();
 
-                    Array.Resize(ref colIdx, headerRdr.Length);
-                    for (int i = 0; i! < headerRdr.Length; i++)
-                    {
-                        colIdx[i] = 999;
-                    }
+                    Array.Resize(ref colIdx, headerRdr.Length - 1);
+                    int f = -1;
 
-                    for (int i = 0; i! < headerRdr.Length; i++)
+                    for (int i = 0; i != headerRdr.Length; i++)
                     {
-                        if (Array.Exists(fldname, element => element.StartsWith(headerRdr[i])))
+                        f = SetNames(f, headerRdr[i], ref fldName, ref prmName);
+                    }
+                    Array.Resize(ref fldTyp, f+1);
+
+                    string[] rdr = parser.ReadFields();
+                    int tmpOut = 0;
+                    for (int i = 0; i! < fldTyp.Length; i++)
+                    {
+                        if (headerRdr[i].Contains("Date"))
                         {
-                            colIdx[i] = Array.IndexOf(fldname, headerRdr[i]);
+                            fldTyp[i] = 3;
                         }
-                        else if (i > 15)
+                        else if (int.TryParse(rdr[i], out tmpOut))
                         {
-                            if (headerRdr[i].IndexOf("Hour") > 0)
+                            if (Array.Exists(exempt, element => element.StartsWith(headerRdr[i])))
                             {
-                                colIdx[i] = 0;
+                                fldTyp[i] = 1;
                             }
                             else
                             {
-                                colIdx[i] = 1;
+                                fldTyp[i] = 2;
                             }
-
+                        }
+                        else
+                        {
+                            fldTyp[i] = 1;
                         }
                     }
                     while (!parser.EndOfData)
                     {
 
-                        string[] rdr = parser.ReadFields();
-
                         gmcInsCon.Open();
                         command.Parameters.Clear();
-                        command.Parameters.Add("@Paycom_code", SqlDbType.NChar, 10).Value = rdr[0];
-                        command.Parameters.Add("@Transaction_Number", SqlDbType.NChar, 10).Value = rdr[2];
-                        command.Parameters.Add("@Check_Number", SqlDbType.Int).Value = int.Parse(rdr[3]);
-                        command.Parameters.Add("@PayDate", SqlDbType.Date).Value = DateTime.Parse(rdr[4]);
-                        command.Parameters.Add("@Adjust", SqlDbType.NChar, 10).Value = rdr[5];
-                        command.Parameters.Add("@Period_End_Date", SqlDbType.Date).Value = DateTime.Parse(rdr[6]);
-                        command.Parameters.Add("@Department_Idx", SqlDbType.Int).Value = int.Parse(rdr[7]);
-                        command.Parameters.Add("@Payroll_Profile_Code", SqlDbType.NChar, 10).Value = rdr[8];
-                        command.Parameters.Add("@Store_Code", SqlDbType.NChar, 3).Value = rdr[9];
-                        command.Parameters.Add("@District_Code", SqlDbType.NChar, 3).Value = rdr[10];
-                        command.Parameters.Add("@Job_Title_Idx", SqlDbType.Int).Value = int.Parse(rdr[11]);
-                        command.Parameters.Add("@Paycheck_Distribution_code", SqlDbType.NChar, 3).Value = rdr[12];
-                        command.Parameters.Add("@PayType", SqlDbType.NChar, 3).Value = rdr[13];
-                        command.Parameters.Add("@Employee_Code", SqlDbType.NChar, 4).Value = rdr[14];
-                        command.Parameters.Add("@Employee_Name", SqlDbType.NChar, 50).Value = rdr[15];
-                        for (int i = 0; i! < fldamt.Length; i++)
+                        for (int x=0; x !< fldName.Length; x++)
                         {
-                            fldamt[i] = 0;
-                        }
-                        for (int i = 0; i! < colIdx.Length; i++)
-                        {
-                            if (colIdx[i] != 999)
+                            switch (fldTyp[x])
                             {
-                                fldamt[colIdx[i]] = fldamt[colIdx[i]] + Decimal.Parse(rdr[i]);
+                                case > 2:
+                                    command.Parameters.Add(prmName[x], SqlDbType.Date).Value = DateTime.Parse(rdr[x]);
+                                    break;
+                                case > 1:
+                                    if (rdr[x] == "")
+                                    {
+                                        command.Parameters.Add(prmName[x], SqlDbType.Int).Value = 0;
+                                    }
+                                    else
+                                    {
+                                        command.Parameters.Add(prmName[x], SqlDbType.Int).Value = int.Parse(rdr[x]);
+                                    }
+                                    break;
+                                default:
+                                    command.Parameters.Add(prmName[x], SqlDbType.VarChar).Value = rdr[x];
+                                    break;
                             }
+                                
                         }
-                        for (int i = 0; i! < fldname.Length; i++)
-                        {
-                            command.Parameters.Add(prmname[i], SqlDbType.Decimal).Value = fldamt[i];
-
-                        }
-
+                      
                         Console.WriteLine(rdr[2] + " - " + rdr[3]);
                         command.ExecuteNonQuery();
 
                         gmcInsCon.Close();
+                        rdr = parser.ReadFields();
                     }
                     gmccon.Close();
 
