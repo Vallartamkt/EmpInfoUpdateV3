@@ -21,9 +21,9 @@ namespace EmpInfoUpdateV3
     {
         static void Main()
         {
-            sp_LoadPayroll();
+            sp_LoadEmpInfo();
         }
-        static void sp_LoadPayroll()
+        static void sp_LoadEmpInfo()
         {
             int[] colIdx = new int[1];
             string[] fldname = new string[1];
