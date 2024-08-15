@@ -29,7 +29,8 @@ namespace EmpInfoUpdateV3
             string[] fldName = new string[1];
             string[] prmName = new string[1];
             int[] fldTyp = new int[1];
-            string[] exempt = { "SS_Number", "Zipcode","ClockSeq" };
+            string[] exempt = { "SS_Number", "Zipcode", "ClockSeq" };
+            string[] intFlds = { "Department_Idx", "JobTitle_Code", "Position_Code", "Position_Family_Code", "Age", "Annual_Salary", "BenefitHOURS", "Scheduled_Pay_Period_Hours" };
 
             SqlConnectionStringBuilder gmcsb = new SqlConnectionStringBuilder();
             gmcsb.IntegratedSecurity = true;
@@ -57,11 +58,11 @@ namespace EmpInfoUpdateV3
                     {
                         f = SetNames(f, headerRdr[i], ref fldName, ref prmName);
                     }
-                    Array.Resize(ref fldTyp, f+1);
+                    Array.Resize(ref fldTyp, f + 1);
 
                     string[] rdr = parser.ReadFields();
                     int tmpOut = 0;
-                    for (int i = 0; i! < fldTyp.Length; i++)
+                    for (int i = 0; i < fldTyp.Length; i++)
                     {
                         if (headerRdr[i].Contains("Date"))
                         {
@@ -69,13 +70,14 @@ namespace EmpInfoUpdateV3
                         }
                         else if (int.TryParse(rdr[i], out tmpOut))
                         {
-                            if (Array.Exists(exempt, element => element.StartsWith(headerRdr[i])))
+                            //if (Array.Exists(exempt, element => element.StartsWith(headerRdr[i])))
+                            if (Array.Exists(intFlds, element => element.StartsWith(headerRdr[i])))
                             {
-                                fldTyp[i] = 1;
+                                fldTyp[i] = 2;
                             }
                             else
                             {
-                                fldTyp[i] = 2;
+                                fldTyp[i] = 1;
                             }
                         }
                         else
@@ -88,13 +90,20 @@ namespace EmpInfoUpdateV3
 
                         gmcInsCon.Open();
                         command.Parameters.Clear();
-                        for (int x=0; x !< fldName.Length; x++)
+                        for (int x = 0; x < fldName.Length; x++)
                         {
                             switch (fldTyp[x])
                             {
                                 case > 2:
-                                    command.Parameters.Add(prmName[x], SqlDbType.Date).Value = DateTime.Parse(rdr[x]);
-                                    break;
+                                    if (rdr[x] == "00/00/0000")
+                                    {
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        command.Parameters.Add(prmName[x], SqlDbType.Date).Value = DateTime.Parse(rdr[x]);
+                                        break;
+                                    }
                                 case > 1:
                                     if (rdr[x] == "")
                                     {
@@ -109,9 +118,9 @@ namespace EmpInfoUpdateV3
                                     command.Parameters.Add(prmName[x], SqlDbType.VarChar).Value = rdr[x];
                                     break;
                             }
-                                
+
                         }
-                      
+
                         Console.WriteLine(rdr[2] + " - " + rdr[3]);
                         command.ExecuteNonQuery();
 
